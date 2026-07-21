@@ -1,0 +1,32 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Environment Check') {
+            steps {
+                sh '''
+                    echo "===== Current User ====="
+                    whoami
+
+                    echo "===== Current Directory ====="
+                    pwd
+
+                    echo "===== Repository Files ====="
+                    ls -R
+
+                    echo "===== Docker Version ====="
+                    docker --version
+
+                    echo "===== Running Containers ====="
+                    docker ps
+
+                    echo "===== AWS Identity ====="
+                    aws sts get-caller-identity
+
+                    echo "===== Git Version ====="
+                    git --version
+                '''
+            }
+        }
+    }
+}
