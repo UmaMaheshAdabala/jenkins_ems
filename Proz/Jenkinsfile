@@ -17,7 +17,7 @@ pipeline{
             }
             steps{
                 dir('Proz/Employee_Management/Client'){
-                    sh 'npm install'
+                    sh 'npm ci'
                 }
             }
         }
