@@ -17,7 +17,10 @@ pipeline{
             }
             steps{
                 dir('Proz/Employee_Management/Client'){
-                    sh 'npm ci'
+                    sh '''
+                        npm config set cache .npm
+                        npm ci
+                    '''
                 }
             }
         }
