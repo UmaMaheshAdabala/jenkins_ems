@@ -18,8 +18,11 @@ pipeline{
             steps{
                 dir('Proz/Employee_Management/Client'){
                     sh '''
-                        npm config set cache .npm
+                        export HOME=$PWD
+                        export npm_config_cache=$PWD/.npm
+
                         npm ci
+                       
                     '''
                 }
             }
