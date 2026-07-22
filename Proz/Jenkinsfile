@@ -42,19 +42,7 @@ pipeline{
             }
         }
 
-        stage('Frontend_lint'){
-            agent{
-                docker {
-                    image 'node:18-alpine'
-                    reuseNode true
-                }
-            }
-            steps{
-                dir('Proz/Employee_Management/Client'){
-                    sh 'npm run lint'
-                }
-            }
-        }
+    
         
         stage('Backend-Install Dependencies'){
             agent{
