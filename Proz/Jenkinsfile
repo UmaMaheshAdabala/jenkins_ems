@@ -53,7 +53,12 @@ pipeline{
             }
             steps{
                 dir('Proz/Employee_Management/Server'){
-                    sh 'npm install'
+                    sh '''
+                        export HOME=$PWD
+                        export npm_config_cache=$PWD/.npm
+
+                        npm install
+                    '''
                 }
             }
         }
