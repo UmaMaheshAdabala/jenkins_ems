@@ -1,32 +1,68 @@
-pipeline {
+pipeline{
     agent any
 
-    stages {
-        stage('Environment Check') {
-            steps {
-                sh '''
-                    echo "===== Current User ====="
-                    whoami
-
-                    echo "===== Current Directory ====="
-                    pwd
-
-                    echo "===== Repository Files ====="
-                    ls -R
-
-                    echo "===== Docker Version ====="
-                    docker --version
-
-                    echo "===== Running Containers ====="
-                    docker ps
-
-                    echo "===== AWS Identity ====="
-                    aws sts get-caller-identity
-
-                    echo "===== Git Version ====="
-                    git --version
-                '''
+    stages{
+        stage('Checkout'){
+            steps{
+                checkout scm
             }
         }
-    }
+
+        stage('Frontend-Install Dependencies'){
+            agent{
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps{
+                dir('Proz/Employee_Management/Client'){
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Frontend-Build'){
+            agent{
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps{
+                dir('Proz/Employee_Management/Client'){
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Frontend_lint'){
+            agent{
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps{
+                dir('Proz/Employee_Management/Client'){
+                    sh 'npm run lint'
+                }
+            }
+        }
+        
+        stage('Backend-Install Dependencies'){
+            agent{
+                docker{
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps{
+                dir('Proz/Employee_Management/Server'){
+                    sh 'npm install'
+                }
+            }
+        }
+        
+     }
 }
