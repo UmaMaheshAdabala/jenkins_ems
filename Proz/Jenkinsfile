@@ -62,6 +62,22 @@ pipeline{
                 }
             }
         }
+
+        stage('Build-Frontend-Docker-File'){
+            steps{
+                dir('Proz/Employee_Management/Client'){
+                    sh 'docker build -t frontend-image:latest .'
+                }
+            }
+        }
+
+        stage('Build-Backend-DockerFile'){
+            steps{
+                dir('Proz/Employee_Management/Server'){
+                    sh 'docker build -t backend-image:latest .'
+                }
+            }
+        }
         
      }
 }
