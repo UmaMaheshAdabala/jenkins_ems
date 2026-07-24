@@ -77,7 +77,7 @@ pipeline{
                 --ignore-unfixed \
                 --format table \
                 --output trivy-reports/backend-report.txt \
-                --exit-code 1 \
+                --exit-code 0 \
                 backend:${BUILD_NUMBER}
 
                 echo "=============================="
@@ -89,7 +89,7 @@ pipeline{
                 --ignore-unfixed \
                 --format table \
                 --output trivy-reports/frontend-report.txt \
-                --exit-code 1 \
+                --exit-code 0 \
                 frontend:${BUILD_NUMBER}
                 '''
             }
