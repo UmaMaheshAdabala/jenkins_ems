@@ -2,12 +2,20 @@ pipeline{
     agent any
 
     environment {
-        AWS_REGION     = "us-east-1"
-        AWS_ACCOUNT_ID = "145678291359"
+    AWS_REGION     = "us-east-1"
+    AWS_ACCOUNT_ID = "145678291359"
 
-        BACKEND_REPO   = "backend-repo"
-        FRONTEND_REPO  = "frontend-repo"
-    }
+    BACKEND_REPO   = "backend-repo"
+    FRONTEND_REPO  = "frontend-repo"
+
+    ECS_CLUSTER    = "Proz_ECS_Cluster"
+
+    BACKEND_SERVICE  = "backend_service"
+    FRONTEND_SERVICE = "frontend-service"
+
+    BACKEND_TASK_FAMILY = "backend-task"
+    FRONTEND_TASK_FAMILY = "frontend-task"
+}
 
     stages{
         stage('Checkout'){
@@ -140,6 +148,107 @@ pipeline{
 
                 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:${BUILD_NUMBER}
                 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:latest
+                '''
+            }
+        }
+        stage('Create Backend Task Definition Revision') {
+            steps {
+                sh '''
+                aws ecs describe-task-definition \
+                    --task-definition ${BACKEND_TASK_FAMILY} \
+                    --region ${AWS_REGION} \
+                    --query taskDefinition > backend-task.json
+
+                jq 'del(
+                    .taskDefinitionArn,
+                    .revision,
+                    .status,
+                    .requiresAttributes,
+                    .compatibilities,
+                    .registeredAt,
+                    .registeredBy
+                )' backend-task.json > backend-task-clean.json
+
+                jq --arg IMAGE "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:${BUILD_NUMBER}" \
+                '.containerDefinitions[0].image = $IMAGE' \
+                backend-task-clean.json > backend-task-new.json
+
+                aws ecs register-task-definition \
+                    --cli-input-json file://backend-task-new.json \
+                    --region ${AWS_REGION}
+                '''
+            }
+        }
+        stage('Deploy Backend') {
+            steps {
+                sh '''
+                aws ecs update-service \
+                    --cluster ${ECS_CLUSTER} \
+                    --service ${BACKEND_SERVICE} \
+                    --task-definition ${BACKEND_TASK_FAMILY} \
+                    --region ${AWS_REGION}
+                '''
+            }
+        }
+        stage('Wait for Backend Deployment') {
+            steps {
+                sh '''
+                aws ecs wait services-stable \
+                    --cluster ${ECS_CLUSTER} \
+                    --services ${BACKEND_SERVICE} \
+                    --region ${AWS_REGION}
+                '''
+            }
+        }
+
+        stage('Create Frontend Task Definition Revision') {
+            steps {
+                sh '''
+                aws ecs describe-task-definition \
+                    --task-definition ${FRONTEND_TASK_FAMILY} \
+                    --region ${AWS_REGION} \
+                    --query taskDefinition > frontend-task.json
+
+                jq 'del(
+                    .taskDefinitionArn,
+                    .revision,
+                    .status,
+                    .requiresAttributes,
+                    .compatibilities,
+                    .registeredAt,
+                    .registeredBy
+                )' frontend-task.json > frontend-task-clean.json
+
+                jq --arg IMAGE "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:${BUILD_NUMBER}" \
+                '.containerDefinitions[0].image = $IMAGE' \
+                frontend-task-clean.json > frontend-task-new.json
+
+                aws ecs register-task-definition \
+                    --cli-input-json file://frontend-task-new.json \
+                    --region ${AWS_REGION}
+                '''
+            }
+        }
+
+        stage('Deploy Frontend') {
+            steps {
+                sh '''
+                aws ecs update-service \
+                    --cluster ${ECS_CLUSTER} \
+                    --service ${FRONTEND_SERVICE} \
+                    --task-definition ${FRONTEND_TASK_FAMILY} \
+                    --region ${AWS_REGION}
+                '''
+            }
+        }
+
+        stage('Wait for Frontend Deployment') {
+            steps {
+                sh '''
+                aws ecs wait services-stable \
+                    --cluster ${ECS_CLUSTER} \
+                    --services ${FRONTEND_SERVICE} \
+                    --region ${AWS_REGION}
                 '''
             }
         }

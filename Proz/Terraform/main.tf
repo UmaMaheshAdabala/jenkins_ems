@@ -133,6 +133,13 @@ resource "aws_security_group" "sg" {
   }
 
   ingress {
+    from_port   = 9000
+    to_port     = 9000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
@@ -275,146 +282,164 @@ resource "aws_cloudwatch_log_group" "my-log-group" {
   }
 }
 
-# # IAM Role for ECS Task Execution
+# IAM Role for ECS Task Execution
 
-# resource "aws_iam_role" "ecs_task_execution_role" {
-#   name = "ecsTaskExecutionRole"
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
 
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Action = "sts:AssumeRole"
-#         Effect = "Allow"
-#         Principal = {
-#           Service = "ecs-tasks.amazonaws.com"
-#         }
-#       }
-#     ]
-#   })
-# }
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
 
-# resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-#   role       = aws_iam_role.ecs_task_execution_role.name
-#   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-# }
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
 
 
 
-# # ECS Task Definitions
+# ECS Task Definitions
 
-# resource "aws_ecs_task_definition" "frontend_task" {
-#   family                   = "frontend-task"
-#   network_mode             = "awsvpc"
-#   requires_compatibilities = ["FARGATE"]
-#   cpu                      = "256"
-#   memory                   = "512"
+resource "aws_ecs_task_definition" "frontend_task" {
+  family                   = "frontend-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
 
-#   execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
 
-#   container_definitions = jsonencode([
-#     {
-#       name      = "frontend-container"
-#       image     = "${aws_ecr_repository.frontend_ecr.repository_url}:latest"
-#       essential = true
-#       portMappings = [
-#         {
-#           containerPort = 80
-#           hostPort      = 80
-#         }
-#       ]
-#       cpu    = 256
-#       memory = 512
-#       linuxParameters = {
-#         initProcessEnabled = true
-#       },
+  container_definitions = jsonencode([
+    {
+      name      = "frontend-container"
+      image     = "${aws_ecr_repository.frontend_ecr.repository_url}:latest"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 80
+          hostPort      = 80
+        }
+      ]
+      cpu    = 256
+      memory = 512
+      linuxParameters = {
+        initProcessEnabled = true
+      },
 
-#       logConfiguration = {
-#         logDriver = "awslogs",
-#         options = {
-#           awslogs-group         = aws_cloudwatch_log_group.my-log-group.name,
-#           awslogs-region        = "us-east-1",
-#           awslogs-stream-prefix = "frontend-log"
-#         }
-#       }
-#     }
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.my-log-group.name,
+          awslogs-region        = "us-east-1",
+          awslogs-stream-prefix = "frontend-log"
+        }
+      }
+    }
 
-#   ])
-# }
+  ])
+}
 
-# resource "aws_ecs_task_definition" "backend_task" {
-#   family                   = "backend-task"
-#   network_mode             = "awsvpc"
-#   requires_compatibilities = ["FARGATE"]
-#   cpu                      = "256"
-#   memory                   = "512"
+resource "aws_ecs_task_definition" "backend_task" {
+  family                   = "backend-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
 
-#   execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
 
-#   container_definitions = jsonencode([
-#     {
-#       name      = "backend-container"
-#       image     = "${aws_ecr_repository.backend_ecr.repository_url}:latest"
-#       essential = true
-#       portMappings = [
-#         {
-#           containerPort = 3000
-#           hostPort      = 3000
-#         }
-#       ]
-#       cpu    = 256
-#       memory = 512
-#       linuxParameters = {
-#         initProcessEnabled = true
-#       },
-#       logConfiguration = {
-#         logDriver = "awslogs",
-#         options = {
-#           awslogs-group         = aws_cloudwatch_log_group.my-log-group.name,
-#           awslogs-region        = "us-east-1",
-#           awslogs-stream-prefix = "backend-log"
-#         }
-#       }
-#     }
-#   ])
-# }
+  container_definitions = jsonencode([
+    {
+      name      = "backend-container"
+      image     = "${aws_ecr_repository.backend_ecr.repository_url}:latest"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 3000
+          hostPort      = 3000
+        }
+      ]
+      cpu    = 256
+      memory = 512
+      environment = [
+        {
+          name  = "DATABASE_ENDPOINT",
+          value = aws_db_instance.db_instance.address
+        },
+        {
+          name  = "DATABASE_USER",
+          value = aws_db_instance.db_instance.username
+        },
+        {
+          name  = "DATABASE_PASSWORD",
+          value = aws_db_instance.db_instance.password
+        },
+        {
+          name  = "FRONTEND_URL",
+          value = "http://${aws_lb.ALB.dns_name}"
+        }
+      ]
+      linuxParameters = {
+        initProcessEnabled = true
+      },
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.my-log-group.name,
+          awslogs-region        = "us-east-1",
+          awslogs-stream-prefix = "backend-log"
+        }
+      }
+    }
+  ])
+}
 
-# # ECS Services  
+# ECS Services  
 
-# resource "aws_ecs_service" "frontend_service" {
-#   name            = "frontend-service"
-#   cluster         = aws_ecs_cluster.ecs_cluster.id
-#   task_definition = aws_ecs_task_definition.frontend_task.arn
-#   desired_count   = 1
-#   launch_type     = "FARGATE"
+resource "aws_ecs_service" "frontend_service" {
+  name            = "frontend-service"
+  cluster         = aws_ecs_cluster.ecs_cluster.id
+  task_definition = aws_ecs_task_definition.frontend_task.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
 
-#   network_configuration {
-#     subnets          = [aws_subnet.subnet2.id, aws_subnet.subnet3.id]
-#     security_groups  = [aws_security_group.sg.id]
-#     assign_public_ip = false
-#   }
+  network_configuration {
+    subnets          = [aws_subnet.subnet2.id, aws_subnet.subnet3.id]
+    security_groups  = [aws_security_group.sg.id]
+    assign_public_ip = false
+  }
 
-#   load_balancer {
-#     target_group_arn = aws_alb_target_group.frontend_target_group.arn
-#     container_name   = "frontend-container"
-#     container_port   = 80
-#   }
-# }
+  load_balancer {
+    target_group_arn = aws_alb_target_group.frontend_target_group.arn
+    container_name   = "frontend-container"
+    container_port   = 80
+  }
+}
 
-# resource "aws_ecs_service" "backend_service" {
-#   name            = "backend_service"
-#   cluster         = aws_ecs_cluster.ecs_cluster.id
-#   task_definition = aws_ecs_task_definition.backend_task.arn
-#   desired_count   = 1
-#   launch_type     = "FARGATE"
-#   network_configuration {
-#     subnets          = [aws_subnet.subnet2.id, aws_subnet.subnet3.id]
-#     security_groups  = [aws_security_group.sg.id]
-#     assign_public_ip = false
-#   }
-#   load_balancer {
-#     target_group_arn = aws_alb_target_group.backend_target_group.arn
-#     container_name   = "backend-container"
-#     container_port   = 3000
-#   }
-# }
+resource "aws_ecs_service" "backend_service" {
+  name            = "backend_service"
+  cluster         = aws_ecs_cluster.ecs_cluster.id
+  task_definition = aws_ecs_task_definition.backend_task.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  network_configuration {
+    subnets          = [aws_subnet.subnet2.id, aws_subnet.subnet3.id]
+    security_groups  = [aws_security_group.sg.id]
+    assign_public_ip = false
+  }
+  load_balancer {
+    target_group_arn = aws_alb_target_group.backend_target_group.arn
+    container_name   = "backend-container"
+    container_port   = 3000
+  }
+}
