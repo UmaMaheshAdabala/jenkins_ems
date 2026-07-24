@@ -93,8 +93,19 @@ pipeline{
 
         stage('Build-Frontend-Docker-File'){
             steps{
-                dir('Proz/Employee_Management/Client'){
-                    sh 'docker build -t frontend-image:latest .'
+                dir('Proz/Employee_Management/Client') {
+
+                    withCredentials([
+                        string(credentialsId: 'VITE_BACKEND_URL',
+                            variable: 'BACKEND_URL')
+                    ]) {
+
+                        sh """
+                        docker build \
+                        --build-arg VITE_BACKEND_URL=$BACKEND_URL \
+                        -t frontend:${BUILD_NUMBER} .
+                        """
+                    }
                 }
             }
         }
@@ -102,7 +113,7 @@ pipeline{
         stage('Build-Backend-DockerFile'){
             steps{
                 dir('Proz/Employee_Management/Server'){
-                    sh 'docker build -t backend-image:latest .'
+                    sh 'docker build -t backend-image:${BUILD_NUMBER} .'
                 }
             }
         }
