@@ -8,61 +8,6 @@ pipeline{
             }
         }
 
-        stage('Frontend-Install Dependencies'){
-            agent{
-                docker {
-                    image 'node:18-alpine'
-                    reuseNode true
-                }
-            }
-            steps{
-                dir('Proz/Employee_Management/Client'){
-                    sh '''
-                        export HOME=$PWD
-                        export npm_config_cache=$PWD/.npm
-
-                        npm ci
-                       
-                    '''
-                }
-            }
-        }
-
-        stage('Frontend-Build'){
-            agent{
-                docker {
-                    image 'node:18-alpine'
-                    reuseNode true
-                }
-            }
-            steps{
-                dir('Proz/Employee_Management/Client'){
-                    sh 'npm run build'
-                }
-            }
-        }
-
-    
-        
-        stage('Backend-Install Dependencies'){
-            agent{
-                docker{
-                    image 'node:18-alpine'
-                    reuseNode true
-                }
-            }
-            steps{
-                dir('Proz/Employee_Management/Server'){
-                    sh '''
-                        export HOME=$PWD
-                        export npm_config_cache=$PWD/.npm
-
-                        npm install
-                    '''
-                }
-            }
-        }
-
         stage('SonarQube Analysis'){
             steps{
                script{
@@ -113,10 +58,47 @@ pipeline{
         stage('Build-Backend-DockerFile'){
             steps{
                 dir('Proz/Employee_Management/Server'){
-                    sh 'docker build -t backend-image:${BUILD_NUMBER} .'
+                    sh 'docker build -t backend:${BUILD_NUMBER} .'
                 }
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh '''
+                mkdir -p trivy-reports
+
+                echo "=============================="
+                echo "Scanning Backend Image"
+                echo "=============================="
+
+                trivy image \
+                --severity HIGH,CRITICAL \
+                --ignore-unfixed \
+                --format table \
+                --output trivy-reports/backend-report.txt \
+                --exit-code 1 \
+                backend:${BUILD_NUMBER}
+
+                echo "=============================="
+                echo "Scanning Frontend Image"
+                echo "=============================="
+
+                trivy image \
+                --severity HIGH,CRITICAL \
+                --ignore-unfixed \
+                --format table \
+                --output trivy-reports/frontend-report.txt \
+                --exit-code 1 \
+                frontend:${BUILD_NUMBER}
+                '''
             }
         }
         
      }
+     post {
+        always {
+            archiveArtifacts artifacts: 'trivy-reports/*.txt', fingerprint: true
+        }
+    }
 }
