@@ -74,7 +74,7 @@ pipeline{
                         -Dsonar.projectKey=Employee-Management-System \
                         -Dsonar.projectName="Employee Management System" \
                         -Dsonar.projectVersion=1.0 \
-                        -Dsonar.sources=Employee_Management/Server,Employee_Management/Client \
+                        -Dsonar.sources=Proz/Employee_Management/Server,Proz/Employee_Management/Client/src \
                         -Dsonar.exclusions=**/node_modules/**,**/dist/** \
                         -Dsonar.sourceEncoding=UTF-8
                         """
