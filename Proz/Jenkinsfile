@@ -63,6 +63,34 @@ pipeline{
             }
         }
 
+        stage('SonarQube Analysis'){
+            steps{
+               script{
+                    def scannerHome = tool 'SonarScanner'
+
+                    withSonarQubeEnv('SonarQube') {
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=Employee-Management-System \
+                        -Dsonar.projectName="Employee Management System" \
+                        -Dsonar.projectVersion=1.0 \
+                        -Dsonar.sources=Proz/Employee_Management/Server,Proz/Employee_Management/Client \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/** \
+                        -Dsonar.sourceEncoding=UTF-8
+                        """
+                    }
+               }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
         stage('Build-Frontend-Docker-File'){
             steps{
                 dir('Proz/Employee_Management/Client'){
