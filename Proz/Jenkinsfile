@@ -1,6 +1,14 @@
 pipeline{
     agent any
 
+    environment {
+        AWS_REGION     = "us-east-1"
+        AWS_ACCOUNT_ID = "145678291359"
+
+        BACKEND_REPO   = "backend-repo"
+        FRONTEND_REPO  = "frontend-repo"
+    }
+
     stages{
         stage('Checkout'){
             steps{
@@ -94,9 +102,50 @@ pipeline{
                 '''
             }
         }
+        stage('Login to Amazon ECR') {
+            steps {
+                sh '''
+
+                aws ecr get -login-password --region ${AWS_REGION} | \
+                docker login \
+                -- username AWS \
+                --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                '''
+            }
         
-     }
-     post {
+        }
+        stage('Tag Docker Image') {
+            steps {
+                sh '''
+                docker tag backend:${BUILD_NUMBER} \
+                ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:${BUILD_NUMBER}
+
+                docker tag backend:${BUILD_NUMBER} \
+                ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:latest
+
+                docker tag frontend:${BUILD_NUMBER} \
+                ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:${BUILD_NUMBER}
+
+                docker tag frontend:${BUILD_NUMBER} \
+                ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:latest
+                '''
+            }
+        }
+
+        stage('Push Docker Image to Amazon ECR') {
+            steps {
+                sh '''
+                docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:${BUILD_NUMBER}
+                docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:latest
+
+                docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:${BUILD_NUMBER}
+                docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:latest
+                '''
+            }
+        }
+        
+    }
+    post {
         always {
             archiveArtifacts artifacts: 'trivy-reports/*.txt', fingerprint: true
         }
